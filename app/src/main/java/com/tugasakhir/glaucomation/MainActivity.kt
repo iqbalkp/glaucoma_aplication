@@ -30,7 +30,7 @@ import androidx.databinding.DataBindingUtil
 import com.bumptech.glide.Glide
 import com.google.android.material.imageview.ShapeableImageView
 import com.tugasakhir.glaucomation.databinding.ActivityMainBinding
-import com.tugasakhir.glaucomation.ml.Categoricalefficientnet
+import com.tugasakhir.glaucomation.ml.EfficientNetV1
 import com.yalantis.ucrop.UCrop
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -148,26 +148,23 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
             tensorImage = imageProcessor.process(tensorImage)
 
-            val model = Categoricalefficientnet.newInstance(this)
+            val model = EfficientNetV1.newInstance(this)
 
             val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1,224,224,3),DataType.FLOAT32)
             inputFeature0.loadBuffer(tensorImage.buffer)
 
-
             val outputs = model.process(inputFeature0)
             val outputFeature0 = outputs.outputFeature0AsTensorBuffer.floatArray
-            //val outputString = outputFeature0.joinToString(separator = " ")
-
-            var glaucomaprob = outputFeature0[0]
-            var normalprob = outputFeature0[1]
-
-            var prediksi = if (glaucomaprob > normalprob) "GLAUCOMA" else "NORMAL"
-
-            binding.resView.text = prediksi
-
-            binding.map.visibility = View.VISIBLE
 
 
+            val outputString = outputFeature0.joinToString(separator = "\n") // convert float array to string
+
+            if (outputString > 0.263038.toString()) {
+                binding.resView.text = "GLAUKOMA"
+                binding.map.visibility = View.VISIBLE
+            } else {
+                binding.resView.text = "NORMAL"
+            }
             model.close()
         }
 
