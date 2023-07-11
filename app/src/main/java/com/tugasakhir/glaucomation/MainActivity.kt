@@ -50,6 +50,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     lateinit var activityResultLauncher: ActivityResultLauncher<Intent>
     lateinit var finalUri: Uri
 
+    var imageProcessor = ImageProcessor.Builder()
+        .add(ResizeOp(224,224,ResizeOp.ResizeMethod.BILINEAR))
+        .build()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -131,10 +135,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             binding.back.visibility = View.GONE
         }
 
-        var imageProcessor = ImageProcessor.Builder()
-            .add(ResizeOp(224,224,ResizeOp.ResizeMethod.BILINEAR))
-            .build()
-
         binding.detection.setOnClickListener {
             binding.judul.visibility = View.GONE
             var tensorImage = TensorImage(DataType.FLOAT32)
@@ -158,25 +158,25 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding.mbook.setOnClickListener(this)
 
         binding.map.setOnClickListener {
-            val query = Uri.parse("geo:0,0?q=${"Rumah Sakit Mata Terdekat"}")
+            val query = Uri.parse("geo:0,0?q=${"Rumah Sakit Mata Terdekat"}") //latitude dan longitude
             val mapIntent = Intent(Intent.ACTION_VIEW, query)
-            mapIntent.setPackage("com.google.android.apps.maps")
+            mapIntent.setPackage("com.google.android.apps.maps") //alamat aplikasi gmap
             startActivity(mapIntent)
         }
+
 
         activityResultLauncher =
             registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
                 if (result.resultCode == RESULT_OK) {
                     val imageFile = File(currentPhotoPath)
                     val imageUri = Uri.fromFile(imageFile)
-                    // Process the captured image
+                    // Proses menangkap gambar
                     val data: Intent? = result.data
                     data?.data.let { uri -> launchImageCrop(imageUri) }
                 }
                 else { }
             }
     }
-
 
     //permission akses penyimpanan
     override fun onRequestPermissionsResult(
