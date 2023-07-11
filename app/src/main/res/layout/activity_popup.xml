@@ -17,7 +17,7 @@
 
         <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="148dp"
+            android:layout_height="125dp"
             android:background="@color/defaultcolor">
 
             <ImageView
@@ -29,15 +29,15 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="35dp"
+            android:layout_height="50dp"
             android:orientation="vertical"
             android:paddingLeft="10dp"
             android:paddingRight="10dp">
 
             <TextView
                 android:id="@+id/txtAlert"
-                android:layout_width="match_parent"
-                android:layout_height="38dp"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
                 android:gravity="center"
                 android:text="Please make sure the image is fundus image"
                 android:textColor="@color/white"></TextView>
@@ -49,6 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="right"
+            android:layout_marginTop="1dp"
             android:layout_marginRight="80dp"
             android:background="@color/defaultcolor"
             android:padding="5dp"

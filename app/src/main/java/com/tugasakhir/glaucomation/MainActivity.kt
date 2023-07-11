@@ -28,9 +28,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.databinding.DataBindingUtil
 import com.bumptech.glide.Glide
-import com.google.android.material.imageview.ShapeableImageView
 import com.tugasakhir.glaucomation.databinding.ActivityMainBinding
-import com.tugasakhir.glaucomation.ml.EfficientNetV1
+import com.tugasakhir.glaucomation.ml.*
 import com.yalantis.ucrop.UCrop
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -42,16 +41,13 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
-
     private var currentPhotoPath: String? = null
-    lateinit var binding: ActivityMainBinding
-
+    private var REQCODE = 0
     private val GALLERY_REQUEST_CODE = 1234
     private val WRITE_EXTERNAL_STORAGE_CODE = 1
-    private var REQCODE = 0
 
+    lateinit var binding: ActivityMainBinding
     lateinit var activityResultLauncher: ActivityResultLauncher<Intent>
-
     lateinit var finalUri: Uri
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,7 +56,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.back.visibility = View.GONE
         binding.map.visibility = View.GONE
-
         checkPermission()
         requestPermission()
 
@@ -85,7 +80,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         binding.save.setOnClickListener {
-            binding.map.visibility = View.GONE
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
                     val permission = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -96,14 +90,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             }
         }
 
-        binding.cancel.setOnClickListener {
-            binding.resView.text = ""
-            binding.map.visibility = View.GONE
+        binding.repeat.setOnClickListener {
             val builder = AlertDialog.Builder(this)
             builder.setMessage("DO YOU WANT TO REPEAT?")
             builder.setPositiveButton("YES") { dialog, which ->
+                binding.resView.text = ""
+                binding.map.visibility = View.GONE
                 binding.image.visibility = View.GONE
-                binding.cancel.visibility = View.GONE
+                binding.repeat.visibility = View.GONE
                 binding.save.visibility = View.GONE
                 binding.detection.visibility = View.GONE
                 binding.resView.visibility = View.GONE
@@ -124,7 +118,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding.back.setOnClickListener { which ->
             binding.resView.text = ""
             binding.image.visibility = View.GONE
-            binding.cancel.visibility = View.GONE
+            binding.repeat.visibility = View.GONE
             binding.save.visibility = View.GONE
             binding.detection.visibility = View.GONE
             binding.resView.visibility = View.GONE
@@ -144,26 +138,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding.detection.setOnClickListener {
             binding.judul.visibility = View.GONE
             var tensorImage = TensorImage(DataType.FLOAT32)
-            tensorImage.load(MediaStore.Images.Media.getBitmap(this.contentResolver, finalUri))
-
-            tensorImage = imageProcessor.process(tensorImage)
-
-            val model = EfficientNetV1.newInstance(this)
-
+            tensorImage.load(MediaStore.Images.Media.getBitmap(this.contentResolver, finalUri)) //mengambil gambar dari content resolver menggunakan final uri
+            tensorImage = imageProcessor.process(tensorImage) //gambar diproses menggunakan imageProcessor
+            val model = VGG19.newInstance(this) //membuat objek model dengan memanggil
             val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1,224,224,3),DataType.FLOAT32)
             inputFeature0.loadBuffer(tensorImage.buffer)
-
             val outputs = model.process(inputFeature0)
             val outputFeature0 = outputs.outputFeature0AsTensorBuffer.floatArray
-
-
             val outputString = outputFeature0.joinToString(separator = "\n") // convert float array to string
-
-            if (outputString > 0.263038.toString()) {
+            if (outputString > 0.486191.toString()) {
+                binding.resView.text = "NORMAL"
+            } else {
                 binding.resView.text = "GLAUKOMA"
                 binding.map.visibility = View.VISIBLE
-            } else {
-                binding.resView.text = "NORMAL"
             }
             model.close()
         }
@@ -186,11 +173,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     val data: Intent? = result.data
                     data?.data.let { uri -> launchImageCrop(imageUri) }
                 }
-
                 else { }
             }
     }
 
+
+    //permission akses penyimpanan
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -208,18 +196,18 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     private fun saveEditedImage() {
-        val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, finalUri)
-        saveMediaToStorage(bitmap)
+        val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, finalUri) //mengambil gambar dari final uri  menggunakan contentresolver
+        saveMediaToStorage(bitmap) //disimpan dalam penyimpanan dengan memanggil fungsi tersebut
     }
 
     private fun displayPopupDialog(){
         var popupDialog = Dialog(this)
-        popupDialog.setCancelable(false)
+        popupDialog.setCancelable(false) //difungsikan agar popup tidak tertutup ketika di klik diluar popup
 
-        popupDialog.setContentView(R.layout.activity_popup)
-        popupDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        popupDialog.setContentView(R.layout.activity_popup) //mengatur letak pop up
+        popupDialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT)) //membuat background transparant
 
-        var txtAlertMessage = popupDialog.findViewById<TextView>(R.id.txtAlert)
+        popupDialog.findViewById<TextView>(R.id.txtAlert)
         var ok = popupDialog.findViewById<TextView>(R.id.ok)
         var cancel = popupDialog.findViewById<TextView>(R.id.cancel)
 
@@ -242,34 +230,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 }
             }
         popupDialog.show()
-    }
-
-    private fun saveImage(image: Bitmap?, context: Context): Uri {
-        var imageFolder = File(context.cacheDir, "images")
-        var uri: Uri? = null
-
-        try {
-
-            imageFolder.mkdirs()
-            var file: File = File(imageFolder, "captured_image.png")
-            var stream: FileOutputStream = FileOutputStream(file)
-            image?.compress(Bitmap.CompressFormat.JPEG, 100, stream)
-            stream.flush()
-            stream.close()
-            uri = FileProvider.getUriForFile(
-                context.applicationContext,
-                "com.tugasakhir.glaucoma" + ".provider",
-                file
-            )
-
-        } catch (e: FileNotFoundException) {
-            e.printStackTrace()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-
-        return uri!!
-
     }
 
     private fun pickFromGallery() {
@@ -316,9 +276,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         ).apply {
             currentPhotoPath = absolutePath
         }
-
     }
-
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -336,30 +294,24 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
             val resultUri: Uri? = UCrop.getOutput(data!!)
-
             setImage(resultUri!!)
-
             finalUri = resultUri
-
             binding.back.visibility = View.VISIBLE
             binding.image.visibility = View.VISIBLE
             binding.selectToast.visibility = View.GONE
             binding.save.visibility = View.VISIBLE
-            binding.cancel.visibility = View.VISIBLE
+            binding.repeat.visibility = View.VISIBLE
             binding.detection.visibility = View.VISIBLE
             binding.resView.visibility = View.VISIBLE
             binding.camera.visibility = View.GONE
             binding.gallery.visibility = View.GONE
             binding.mbook.visibility = View.GONE
         }
-
     }
 
     private fun launchImageCrop(uri: Uri) {
-
         var destination: String = StringBuilder(UUID.randomUUID().toString()).toString()
         var options: UCrop.Options = UCrop.Options()
-
         UCrop.of(Uri.parse(uri.toString()), Uri.fromFile(File(cacheDir, destination)))
             .withOptions(options)
             .withAspectRatio(0F, 0F)
@@ -373,7 +325,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             .load(uri)
             .into(binding.image)
     }
-
 
     private fun checkPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -434,7 +385,4 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             }
         }
     }
-}
-
-private fun TensorImage.load(image: ShapeableImageView) {
 }
